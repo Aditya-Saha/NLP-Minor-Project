@@ -14,8 +14,11 @@ def processFile(file_path, error_log_path):
     try:
         with open(file_path, 'r', encoding='utf-8') as file:
             for line in file:
-                words = [re.sub(r'[^\u0980-\u09FFa-zA-Z0-9]', '', word) for word in line.strip().split()]
-                word_dict["words"].update(words)
+                # Preprocess line to clean punctuation and normalize spaces
+                line = re.sub(r'[^\u0980-\u09FF\s]', '', line)  # Remove non-Bengali, non-space characters
+                words = line.split()
+                word_dict["words"].update(words)  # Add unique words to the set
+
                 for word in words:
                     word =  re.sub(r'[^\w\s]', '', word)
                     tokens = re.findall(r'[\u0980-\u09FF]', word)
