@@ -14,12 +14,10 @@ def processFile(file_path, error_log_path):
     try:
         with open(file_path, 'r', encoding='utf-8') as file:
             for line in file:
-                # Extract words from the line
-                words = line.strip().split()
-                word_dict["words"].update(words)  # Add unique words to the set
-                
-                # Extract tokens (individual Bengali characters) from each word
+                words = [re.sub(r'[^\u0980-\u09FFa-zA-Z0-9]', '', word) for word in line.strip().split()]
+                word_dict["words"].update(words)
                 for word in words:
+                    word =  re.sub(r'[^\w\s]', '', word)
                     tokens = re.findall(r'[\u0980-\u09FF]', word)
                     word_dict["tokens"].update(tokens)  # Add unique tokens to the set
     except FileNotFoundError:
@@ -103,8 +101,6 @@ if __name__ == "__main__":
 
     # Step 1: Process all files in the data directory
     all_file_data = processDirectory(data_directory, error_log_path)
-
-    print(all_file_data)
 
     if all_file_data:
         # Write processed data to output file
