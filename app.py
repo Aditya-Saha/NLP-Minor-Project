@@ -121,3 +121,4 @@ if __name__ == "__main__":
 
     if os.path.getsize(error_log_path) > 0:
         print(f"\nErrors occurred during processing. Check the error log: {error_log_path}")
+print("END OF FILE")
