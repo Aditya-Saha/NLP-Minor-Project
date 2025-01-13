@@ -1,11 +1,12 @@
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, Trainer, TrainingArguments
-from transformers import DataCollatorWithPadding  # Correct import for classification
+from transformers import DataCollatorWithPadding
 from datasets import load_dataset
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
+import numpy as np
 
 # Number of genres
 numberOfGenres = 23
-model_name = "csebuetnlp/banglabert"
+model_name = "sagorsarker/bangla-bert-base"
 
 # Load model and tokenizer
 tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -27,7 +28,6 @@ id_to_label = {i: label for label, i in label_to_id.items()}
 
 # Preprocess the dataset
 def preprocess_function(examples):
-    # Tokenize lyrics and map category labels
     tokenized_inputs = tokenizer(
         examples["lyrics"],
         truncation=True,
@@ -39,29 +39,33 @@ def preprocess_function(examples):
 
 encoded_dataset = dataset.map(preprocess_function, batched=True)
 
-# Define training arguments
+# Define training arguments with optimizations
 training_args = TrainingArguments(
     output_dir="./results",
-    eval_strategy="epoch",  # Update from deprecated 'evaluation_strategy'
-    learning_rate=2e-5,
-    per_device_train_batch_size=8,  # Reduce batch size
-    per_device_eval_batch_size=8,
-    num_train_epochs=3,
+    eval_strategy="epoch", 
+    save_strategy="epoch",  
+    learning_rate=3e-5,  
+    per_device_train_batch_size=16,  
+    per_device_eval_batch_size=16,
+    num_train_epochs=5,  
     weight_decay=0.01,
-    save_strategy="epoch",
     logging_dir="./logs",
-    logging_steps=100,
+    logging_steps=50,  
     load_best_model_at_end=True,
     metric_for_best_model="accuracy",
     save_total_limit=2,
-    gradient_accumulation_steps=2  # Use gradient accumulation
+    gradient_accumulation_steps=1,  
+    warmup_steps=500, 
+    fp16=True,  
+    dataloader_num_workers=4,
+    dataloader_pin_memory=True
 )
 
 # Define compute metrics function
 def compute_metrics(pred):
     predictions, labels = pred
-    preds = predictions.argmax(axis=-1)
-    precision, recall, f1, _ = precision_recall_fscore_support(labels, preds, average="weighted")
+    preds = np.argmax(predictions, axis=-1)
+    precision, recall, f1, _ = precision_recall_fscore_support(labels, preds, average="weighted", zero_division=0)
     acc = accuracy_score(labels, preds)
     return {"accuracy": acc, "f1": f1, "precision": precision, "recall": recall}
 
