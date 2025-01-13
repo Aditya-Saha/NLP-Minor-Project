@@ -33,7 +33,7 @@ def main():
             examples["lyrics"],
             truncation=True,
             padding=True,
-            max_length=512
+            max_length=256  # Reduced max length for lower memory usage
         )
         tokenized_inputs["labels"] = [label_to_id[label] for label in examples["category"]]
         return tokenized_inputs
@@ -46,8 +46,8 @@ def main():
         eval_strategy="epoch",  # Ensure both eval and save strategies match
         save_strategy="epoch",  # Ensure both eval and save strategies match
         learning_rate=2e-5,  # Adjusted learning rate for better convergence
-        per_device_train_batch_size=16,  # Increased batch size
-        per_device_eval_batch_size=16,
+        per_device_train_batch_size=8,  # Reduced batch size for low RAM
+        per_device_eval_batch_size=8,
         num_train_epochs=10,  # Increased number of epochs for better training
         weight_decay=0.01,
         logging_dir="./logs",
@@ -58,7 +58,7 @@ def main():
         gradient_accumulation_steps=1,  # Reduced gradient accumulation
         warmup_steps=500,  # Add warmup steps
         fp16=True,  # Use mixed precision for faster training
-        dataloader_num_workers=4,
+        dataloader_num_workers=2,  # Reduced workers for low RAM
         dataloader_pin_memory=True
     )
 
