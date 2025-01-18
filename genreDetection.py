@@ -3,17 +3,23 @@ from transformers import DataCollatorWithPadding
 from datasets import load_dataset
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 import torch
+import json
 
-# Number of genres
-numberOfGenres = 23
+# Number of genres (ensure this matches the saved label-to-ID mappings)
+
+# Load label mappings from JSON file
+with open("label_to_id.json", "r") as f:
+    label_to_id = json.load(f)
+
+numberOfGenres = len(label_to_id)
 model_name = "csebuetnlp/banglabert"
 
-# Check for CPU
-device = torch.device("cpu")
+# Check for GPU or fallback to CPU
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Load model and tokenizer
 tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=numberOfGenres)
+model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=numberOfGenres).to(device)
 
 # Load dataset with $ delimiter
 dataset = load_dataset(
@@ -23,11 +29,9 @@ dataset = load_dataset(
     column_names=["lyrics", "category"]
 )
 
-# Map labels to integers
-label_list = dataset["train"].unique("category")
-label_list.sort()
-label_to_id = {label: i for i, label in enumerate(label_list)}
-id_to_label = {i: label for label, i in label_to_id.items()}
+
+# Generate id_to_label mapping
+id_to_label = {int(v): k for k, v in label_to_id.items()}
 
 # Preprocess the dataset
 def preprocess_function(examples):
@@ -42,14 +46,14 @@ def preprocess_function(examples):
 
 encoded_dataset = dataset.map(preprocess_function, batched=True)
 
-# Define training arguments with reduced batch size and fewer epochs
+# Define training arguments
 training_args = TrainingArguments(
     output_dir="./results",
     eval_strategy="epoch",
     learning_rate=2e-5,
     per_device_train_batch_size=2,  # Reduce batch size
     per_device_eval_batch_size=2,
-    num_train_epochs=2,  # Fewer epochs
+    num_train_epochs=8,  # Fewer epochs
     weight_decay=0.01,
     save_strategy="epoch",
     logging_dir="./logs",
@@ -57,9 +61,9 @@ training_args = TrainingArguments(
     load_best_model_at_end=True,
     metric_for_best_model="accuracy",
     save_total_limit=2,
-    gradient_accumulation_steps=4,  # Gradient accumulation
-    fp16=True,  # Enable mixed precision training (CPU benefits)
-    save_steps=500  # Save model every 500 steps
+    gradient_accumulation_steps=4,
+    fp16=True,
+    save_steps=500
 )
 
 # Define compute metrics function
@@ -89,3 +93,7 @@ trainer.train()
 # Save model and tokenizer
 model.save_pretrained("./results/csebuetnlp/banglabert-genre-classifier")
 tokenizer.save_pretrained("./results/csebuetnlp/banglabert-genre-classifier")
+
+# Save the mappings again (optional, for consistency)
+with open("id_to_label.json", "w") as f:
+    json.dump(id_to_label, f, ensure_ascii=False, indent=4)
