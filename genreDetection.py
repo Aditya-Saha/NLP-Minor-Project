@@ -8,7 +8,7 @@ import json
 # Number of genres (ensure this matches the saved label-to-ID mappings)
 
 # Load label mappings from JSON file
-with open("label_to_id.json", "r") as f:
+with open("label_to_id.json", "r",encoding="utf-8") as f:
     label_to_id = json.load(f)
 
 numberOfGenres = len(label_to_id)
