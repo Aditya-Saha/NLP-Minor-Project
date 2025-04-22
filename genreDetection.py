@@ -4,10 +4,6 @@ from datasets import load_dataset
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 import torch
 import json
-import os
-
-# Optional: Suppress TensorFlow GPU warnings
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 # -------------------- STEP 1: Load Label and Keyword Dictionary --------------------
 
@@ -27,7 +23,13 @@ model_name = "csebuetnlp/banglabert"
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=numberOfGenres).to(device)
+
+# Ensure the model is loaded correctly
+try:
+    model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=numberOfGenres).to(device)
+except OSError as e:
+    print(f"Error loading model: {e}")
+    # Handle model loading error here
 
 # -------------------- STEP 3: Load Dataset --------------------
 
@@ -37,6 +39,10 @@ dataset = load_dataset(
     delimiter="$",
     column_names=["lyrics", "category"]
 )
+
+# Check column names to ensure 'category' exists
+print(dataset["train"].column_names)
+print(dataset["test"].column_names)
 
 # -------------------- STEP 4: Keyword-based Classification --------------------
 
@@ -67,27 +73,23 @@ dataset["train"] = filter_and_annotate_dataset(dataset["train"])
 # -------------------- STEP 5: Tokenization & Label Filling --------------------
 
 def preprocess_function(examples):
-    lyrics = examples["lyrics"]
-    initial_labels = examples["initial_label"]
-    categories = examples["category"]
-
     inputs = tokenizer(
-        lyrics,
+        examples["lyrics"],
         truncation=True,
         padding=True,
         max_length=256
     )
-
+    
+    # Ensure the labels are integers (not strings)
     inputs["labels"] = [
-        label if label is not None else label_to_id[categories[i]]
-        for i, label in enumerate(initial_labels)
+        int(label) if label is not None else int(label_to_id.get(examples["category"][i], -1))
+        for i, label in enumerate(examples["initial_label"])
     ]
+    
     return inputs
 
-encoded_dataset = dataset.map(
-    preprocess_function,
-    batched=True
-)
+
+encoded_dataset = dataset.map(preprocess_function, batched=True)
 
 # -------------------- STEP 6: Training Arguments --------------------
 
