@@ -4,6 +4,10 @@ from datasets import load_dataset
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 import torch
 import json
+import os
+
+# Optional: Suppress TensorFlow GPU warnings
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 # -------------------- STEP 1: Load Label and Keyword Dictionary --------------------
 
@@ -63,20 +67,27 @@ dataset["train"] = filter_and_annotate_dataset(dataset["train"])
 # -------------------- STEP 5: Tokenization & Label Filling --------------------
 
 def preprocess_function(examples):
+    lyrics = examples["lyrics"]
+    initial_labels = examples["initial_label"]
+    categories = examples["category"]
+
     inputs = tokenizer(
-        examples["lyrics"],
+        lyrics,
         truncation=True,
         padding=True,
         max_length=256
     )
-    # Fallback to model label if keyword match is not found
+
     inputs["labels"] = [
-        ex if ex is not None else label_to_id[examples["category"][i]]
-        for i, ex in enumerate(examples["initial_label"])
+        label if label is not None else label_to_id[categories[i]]
+        for i, label in enumerate(initial_labels)
     ]
     return inputs
 
-encoded_dataset = dataset.map(preprocess_function, batched=True)
+encoded_dataset = dataset.map(
+    preprocess_function,
+    batched=True
+)
 
 # -------------------- STEP 6: Training Arguments --------------------
 
