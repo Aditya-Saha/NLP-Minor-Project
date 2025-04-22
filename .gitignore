@@ -2,4 +2,4 @@ logs/
 .gitignore.swp
 results/
 error_log.txt
-.qodo
+.qodo/
