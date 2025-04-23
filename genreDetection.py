@@ -164,4 +164,4 @@ tokenizer.save_pretrained(output_dir)
 with open(os.path.join(output_dir, "id_to_label.json"), "w", encoding="utf-8") as f:
     json.dump(id_to_label, f, ensure_ascii=False, indent=4)
 
-print("✅ Training complete and model saved!")
+print("Training complete and model saved!")
